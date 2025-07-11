@@ -1,0 +1,44 @@
+name: Aluminum Price Daily Update
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 每天UTC时间02:00运行（北京时间10:00）
+  workflow_dispatch:     # 允许手动触发
+
+jobs:
+  crawl-and-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 关键：授予文件写入权限
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # 禁用默认凭证
+
+      # 2. 设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 lxml
+
+      # 4. 执行爬虫
+      - name: Run crawler
+        run: python aluminum_price_crawler.py
+
+      # 5. 自动提交变更
+      - name: Commit & Push
+        if: success()
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add data/
+          git commit -m "Auto-update: Aluminum price $(date +'%Y-%m-%d')" || echo "无变更无需提交"
+          git push origin main
