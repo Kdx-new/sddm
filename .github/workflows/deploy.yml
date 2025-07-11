@@ -1,71 +1,60 @@
 name: Aluminum Price Daily Update
 
 on:
-  # 手动触发工作流
-  workflow_dispatch:
-  # 定时任务：北京时间每天10点5分运行
+  workflow_dispatch: # 手动触发支持
   schedule:
-    - cron: '5 2 * * *'  # UTC时间2:00，对应北京时间10:00
-    
-  # 代码推送时触发
+    - cron: '5 2 * * *'  # UTC时间2:05 (北京时间10:05)
   push:
-    branches:
-      - main
+    branches: [ main ]
 
+# 设置全局超时防止任务挂起
 jobs:
   crawl-and-deploy:
     runs-on: ubuntu-latest
+    # 全局超时设置，防止任务永久挂起
+    timeout-minutes: 15
+    
     steps:
-      # 步骤1：检出代码
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          fetch-depth: 0  # 减少克隆深度，提升性能
           
-      # 步骤2：设置Python环境
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      
-      # 步骤3：安装爬虫依赖
+          python-version: "3.10"
+          
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 lxml
           
-      # 步骤4：执行爬虫获取最新铝价
-      - name: Run Aluminum Price Crawler
+      - name: Run Crawler
+        id: crawler
         run: python crawler.py
         
-      # 步骤5：提交更新的数据文件
-      - name: Commit Updated Data
-        id: commit
+      - name: Check for Changes
+        id: changes
         run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add price-data.json
-          git commit -m "Auto update: Aluminum price data $(date +'%Y-%m-%d %H:%M')" || exit 0
+          git diff --quiet || echo "changes=true" >> $GITHUB_ENV
+          git status
           
-      # 步骤6：将更新推送到GitHub仓库
-      - name: Push Changes
-        uses: ad-m/github-push-action@master
+      # 仅在有变更时提交
+      - name: Commit Changes
+        if: env.changes == 'true'
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add price-data.json
+          git commit -m "Auto-update: Aluminum price $(date +'%Y-%m-%d')"
+          
+      # 简化部署流程 - 直接推送到pages分支
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
-          
-      # 步骤7：设置GitHub Pages
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-          
-      # 步骤8：部署到GitHub Pages
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-          
-      # 步骤9：部署到GitHub Pages
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2
-        with:
-          target-branch: 'gh-pages'
+          publish_branch: gh-pages
+          publish_dir: .
+          force_orphan: true  # 清除历史提交避免存储库过大
+          keep_files: true  # 保留价格文件
