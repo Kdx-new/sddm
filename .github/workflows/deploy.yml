@@ -1,0 +1,30 @@
+name: Deploy Aluminum Data
+on:
+  schedule:
+    - cron: '0 18 * * *'  # 每天UTC 18:00（北京时间次日2:00）运行[9](@ref)
+  push:
+    branches: [main]
+
+jobs:
+  crawl-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run crawler
+        run: python aluminum_crawler.py  # 执行爬虫脚本
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./  # 部署所有文件（含index.html和JSON）
