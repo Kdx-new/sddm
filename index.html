@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>电解铝实时价格</title>
+    <title>A00铝实时价格</title>
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #1a73e8;index.html
+            --primary: #1a73e8;
             --success: #34a853;
             --danger: #ea4335;
             --text: #333;
@@ -68,6 +68,10 @@
             color: #666;
             font-size: 14px;
             margin: 8px 0;
+        }
+        .price-change {
+            font-size: 16px;
+            margin: 5px 0;
         }
         .refresh-btn {
             background: var(--primary);
@@ -201,12 +205,22 @@
         .hidden {
             display: none;
         }
+        
+        .data-error {
+            color: #ea4335;
+            background: #fff0f0;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="price-card">
         <div class="card-header">
-            <h1>电解铝实时价格</h1>
+            <h1>A00铝实时价格</h1>
         </div>
         
         <div class="price-section">
@@ -215,6 +229,9 @@
             </div>
             <div class="price-time">
                 更新时间：<span id="update-time">--</span>
+            </div>
+            <div class="price-change" id="price-change">
+                今日涨跌：<span id="change-value">--</span>
             </div>
             
             <button class="refresh-btn" id="refresh-btn">
@@ -243,7 +260,7 @@
         </div>
         
         <div class="footer">
-            数据来源：长江有色网
+            数据来源：长江有色金属网 (CCMN) 每日A00铝报价
         </div>
     </div>
 
@@ -255,25 +272,33 @@
         // 页面元素
         const currentPriceEl = document.getElementById('current-price');
         const updateTimeEl = document.getElementById('update-time');
+        const changeValueEl = document.getElementById('change-value');
         const refreshBtn = document.getElementById('refresh-btn');
         const loadingEl = document.getElementById('loading');
         const chartCanvas = document.getElementById('trend-chart');
         const chartPlaceholder = document.getElementById('chart-placeholder');
         
-        // 价格数据API (需替换为实际数据URL)
-        const PRICE_API_URL = 'https://gitee.com/hjyrs/aluminum/price-data.json';
+        // 价格数据API (替换为您的实际数据URL)
+        const PRICE_API_URL = 'aluminum_prices.json';
+        
+        // 存储历史数据
+        let historicalData = [];
         
         // 图表初始配置
         const chartConfig = {
             type: 'line',
             data: {
-                labels: ['7月9日', '7月10日', '今日', '7月12日', '7月13日', ],
+                labels: [],
                 datasets: [{
                     label: '铝锭价格',
-                    data: [20670, 20820, 20790, null, null],
+                    data: [],
                     fill: false,
                     borderColor: '#1a73e8',
-                    tension: 0.2
+                    tension: 0.2,
+                    pointBackgroundColor: '#1a73e8',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
@@ -287,7 +312,7 @@
                         },
                         ticks: {
                             callback: function(value) {
-                                return value + '元';
+                                return value.toLocaleString() + '元';
                             }
                         }
                     },
@@ -300,15 +325,24 @@
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '价格: ' + context.parsed.y.toLocaleString() + '元/吨';
+                            }
+                        }
                     }
                 },
                 elements: {
                     point: {
                         radius: 4,
-                        hoverRadius: 6,
-                        backgroundColor: '#fff',
-                        borderWidth: 2
+                        hoverRadius: 6
                     }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
                 }
             }
         };
@@ -325,20 +359,39 @@
         async function fetchPrice() {
             try {
                 showLoading();
+                
+                // 添加时间戳参数防止缓存
                 const response = await fetch(`${PRICE_API_URL}?t=${new Date().getTime()}`);
+                
+                if (!response.ok) {
+                    throw new Error(`数据获取失败: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
-                updatePriceDisplay(data);
-                updateChartData(data.history);
+                // 找到A00铝数据
+                const aluminumData = data.data.find(item => 
+                    item.product.includes("A00铝")
+                );
+                
+                if (!aluminumData) {
+                    throw new Error("未找到A00铝价格数据");
+                }
+                
+                // 更新显示
+                updatePriceDisplay(aluminumData);
+                
+                // 添加到历史数据
+                addToHistoricalData(aluminumData);
+                
+                // 更新图表
+                updateChartData();
                 
                 // 设置下一次自动刷新（5分钟）
                 setTimeout(fetchPrice, 5 * 60 * 1000);
             } catch (error) {
                 console.error('获取价格失败:', error);
-                updatePriceDisplay({
-                    price: "数据获取失败",
-                    lastUpdated: new Date().toISOString()
-                });
+                displayError(error.message);
             } finally {
                 hideLoading();
             }
@@ -346,16 +399,18 @@
         
         // 更新价格显示
         function updatePriceDisplay(data) {
-            const price = data.price || "--";
-            const updateDate = new Date(data.lastUpdated || new Date());
+            const price = data.price.toLocaleString('zh-CN');
+            const change = data.change;
+            const updateDate = new Date(data.date + "T10:06:00Z"); // 假设每天中午更新
             
             // 格式化时间：YYYY-MM-DD HH:MM
             const formattedTime = `${updateDate.getFullYear()}-${(updateDate.getMonth()+1).toString().padStart(2, '0')}-${updateDate.getDate().toString().padStart(2, '0')} ${updateDate.getHours().toString().padStart(2, '0')}:${updateDate.getMinutes().toString().padStart(2, '0')}`;
             
             // 价格趋势动画
             if (currentPriceEl.textContent !== "--") {
-                const prevPrice = parseFloat(currentPriceEl.querySelector('span').textContent.replace(',', ''));
-                const currentPrice = parseFloat(price.replace(',', ''));
+                const prevPriceText = currentPriceEl.querySelector('span').textContent.replace(/,/g, '');
+                const prevPrice = parseFloat(prevPriceText);
+                const currentPrice = data.price;
                 
                 if (!isNaN(prevPrice) && !isNaN(currentPrice)) {
                     if (currentPrice > prevPrice) {
@@ -372,6 +427,18 @@
             currentPriceEl.innerHTML = `<span class="loading-text">${price}</span><span class="price-unit">元/吨</span>`;
             updateTimeEl.textContent = formattedTime;
             
+            // 更新涨跌值
+            let changeSign = '';
+            if (change > 0) {
+                changeSign = '+';
+                changeValueEl.style.color = 'var(--danger)';
+            } else if (change < 0) {
+                changeValueEl.style.color = 'var(--success)';
+            } else {
+                changeValueEl.style.color = '#666';
+            }
+            changeValueEl.textContent = `${changeSign}${change}元`;
+            
             // 添加动画效果
             currentPriceEl.classList.add('animate-fadeIn');
             setTimeout(() => {
@@ -379,22 +446,78 @@
             }, 500);
         }
         
-        // 更新图表数据
-        function updateChartData(history) {
-            if (!trendChart || !history) return;
+        // 添加数据到历史记录
+        function addToHistoricalData(data) {
+            // 检查是否已有今天的数据
+            const existingIndex = historicalData.findIndex(item => 
+                item.date === data.date
+            );
             
-            // 取最近7天数据
-            const historyData = history.slice(-7);
-            const dataPoints = historyData.map(item => parseFloat(item.price.replace(',', '')));
+            if (existingIndex !== -1) {
+                // 更新现有数据
+                historicalData[existingIndex] = data;
+            } else {
+                // 添加新数据
+                historicalData.push(data);
+            }
+            
+            // 只保留最近7天的数据
+            historicalData = historicalData.slice(-7);
+        }
+        
+        // 更新图表数据
+        function updateChartData() {
+            if (!trendChart) return;
+            
+            // 按日期排序
+            const sortedData = [...historicalData].sort((a, b) => 
+                new Date(a.date) - new Date(b.date)
+            );
+            
+            // 提取标签和数据点
+            const labels = sortedData.map(item => {
+                const date = new Date(item.date);
+                return `${date.getMonth()+1}月${date.getDate()}日`;
+            });
+            
+            const dataPoints = sortedData.map(item => item.price);
             
             // 更新图表
-            trendChart.data.datasets[0].data = [...dataPoints.slice(0, -1), null];
+            trendChart.data.labels = labels;
+            trendChart.data.datasets[0].data = dataPoints;
             trendChart.update();
+            
+            // 如果数据点足够，隐藏占位符
+            if (dataPoints.length > 0) {
+                chartPlaceholder.classList.add('hidden');
+            }
+        }
+        
+        // 显示错误信息
+        function displayError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'data-error';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+            
+            // 插入到价格部分之后
+            const priceSection = document.querySelector('.price-section');
+            priceSection.appendChild(errorDiv);
+            
+            // 5秒后移除错误信息
+            setTimeout(() => {
+                if (priceSection.contains(errorDiv)) {
+                    priceSection.removeChild(errorDiv);
+                }
+            }, 5000);
         }
         
         // 显示加载状态
         function showLoading() {
             loadingEl.classList.remove('hidden');
+            // 添加加载动画到价格显示
+            currentPriceEl.innerHTML = '<span class="loading-text">加载中...</span><span class="price-unit">元/吨</span>';
+            updateTimeEl.textContent = '--';
+            changeValueEl.textContent = '--';
         }
         
         // 隐藏加载状态
