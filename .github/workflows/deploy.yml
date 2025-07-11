@@ -1,7 +1,7 @@
 name: Deploy Aluminum Data
 on:
   schedule:
-    - cron: '0 18 * * *'  # 每天UTC 18:00（北京时间次日2:00）运行[9](@ref)
+    - cron: '5 2 * * *'  # 每天UTC 02:05（北京时间次日10:05）运行[9](@ref)
   push:
     branches: [main]
 
