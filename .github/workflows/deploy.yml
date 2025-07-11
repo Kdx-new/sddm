@@ -3,9 +3,9 @@ name: Aluminum Price Daily Update
 on:
   # 手动触发工作流
   workflow_dispatch:
-  # 定时任务：北京时间每天10点运行
+  # 定时任务：北京时间每天10点5分运行
   schedule:
-    - cron: '0 2 * * *'  # UTC时间2:00，对应北京时间10:00
+    - cron: '5 2 * * *'  # UTC时间2:00，对应北京时间10:00
     
   # 代码推送时触发
   push:
