@@ -4,20 +4,6 @@
   "data": [
     {
       "product": "A00铝",
-      "date": "2025-07-5",
-      "price": 20550.0,
-      "unit": "元/吨",
-      "change": 50
-    },
-    {
-      "product": "A00铝",
-      "date": "2025-07-6",
-      "price": 20660.0,
-      "unit": "元/吨",
-      "change": 60
-    },
-    {
-      "product": "A00铝",
       "date": "2025-07-7",
       "price": 20640.0,
       "unit": "元/吨",
