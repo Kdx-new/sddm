@@ -18,6 +18,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set workspace permissions
+        run: sudo chmod -R 777 $GITHUB_WORKSPACE
+  
       - name: Install dependencies
         run: pip install -r requirements.txt
 
