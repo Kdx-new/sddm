@@ -35,10 +35,12 @@ jobs:
       # 5. 文件验证（调试关键）
       - name: Verify JSON File
         run: |
-          echo "当前目录: $(pwd)"
-          ls -la
-          echo "文件内容:"
-          cat aluminum_prices.json | jq .  # 需要安装jq
+          echo "JSON文件内容:"
+          cat aluminum_prices.json
+          echo "数据条目数:"
+          jq '.data | length' aluminum_prices.json
+          echo "最新数据日期:"
+          jq '.data[-1].date' aluminum_prices.json
 
       # 6. 提交更新（自动检测变更）
       - name: Commit & Push
