@@ -311,6 +311,7 @@
         const refreshBtn = document.getElementById('refresh-btn');
         const loadingEl = document.getElementById('loading');
         const chartCanvas = document.getElementById('trend-chart');
+        const chartPlaceholder = document.getElementById('chart-placeholder');
         
         // 价格数据API
         const PRICE_API_URL = 'aluminum_prices.json';
@@ -390,15 +391,17 @@
                 
                 const data = await response.json();
                 
-                // 关键修复：找到最新日期的数据
-                const latestData = findLatestData(data.data);
+                // 找到铝数据
+                const aluminumData = data.data.find(item => 
+                    item.product.includes("铝") || item.product.includes("铝合金")
+                );
                 
-                if (!latestData) {
-                    throw new Error("未找到最新铝价数据");
+                if (!aluminumData) {
+                    throw new Error("未找到铝价数据");
                 }
                 
                 // 更新显示
-                updatePriceDisplay(latestData);
+                updatePriceDisplay(aluminumData);
                 
                 // 获取所有历史数据
                 const allData = data.data.filter(item => 
@@ -414,25 +417,6 @@
             } finally {
                 hideLoading();
             }
-        }
-        
-        // 关键修复：找到最新日期的数据
-        function findLatestData(dataArray) {
-            if (!dataArray || dataArray.length === 0) return null;
-            
-            // 按日期降序排序
-            const sortedData = [...dataArray].sort((a, b) => {
-                try {
-                    const dateA = new Date(a.date);
-                    const dateB = new Date(b.date);
-                    return dateB - dateA; // 降序排序
-                } catch (e) {
-                    return 0;
-                }
-            });
-            
-            // 返回第一个元素（最新日期）
-            return sortedData[0];
         }
         
         // 更新价格显示
@@ -474,7 +458,7 @@
             changeValueEl.textContent = `${changeSign}${change}元`;
         }
         
-        // 更新图表数据 - 只显示最近7天
+        // 更新图表数据
         function updateChartData(allData) {
             if (!trendChart) return;
             
@@ -517,6 +501,11 @@
             trendChart.data.labels = labels;
             trendChart.data.datasets[0].data = dataPoints;
             trendChart.update();
+            
+            // 关键修复：如果数据点足够，隐藏占位符
+            if (dataPoints.length > 0 && chartPlaceholder) {
+                chartPlaceholder.classList.add('hidden');
+            }
         }
         
         // 显示错误信息
@@ -527,28 +516,32 @@
             
             // 插入到价格部分之后
             const priceSection = document.querySelector('.price-section');
-            priceSection.appendChild(errorDiv);
-            
-            // 5秒后移除错误信息
-            setTimeout(() => {
-                if (priceSection.contains(errorDiv)) {
-                    priceSection.removeChild(errorDiv);
-                }
-            }, 5000);
+            if (priceSection) {
+                priceSection.appendChild(errorDiv);
+                
+                // 5秒后移除错误信息
+                setTimeout(() => {
+                    if (priceSection.contains(errorDiv)) {
+                        priceSection.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
         }
         
         // 显示加载状态
         function showLoading() {
-            loadingEl.classList.remove('hidden');
+            if (loadingEl) loadingEl.classList.remove('hidden');
             // 添加加载动画到价格显示
-            currentPriceEl.innerHTML = '<span class="loading-text">加载中...</span><span class="price-unit">元/吨</span>';
-            updateTimeEl.textContent = '--';
-            changeValueEl.textContent = '--';
+            if (currentPriceEl) {
+                currentPriceEl.innerHTML = '<span class="loading-text">加载中...</span><span class="price-unit">元/吨</span>';
+            }
+            if (updateTimeEl) updateTimeEl.textContent = '--';
+            if (changeValueEl) changeValueEl.textContent = '--';
         }
         
         // 隐藏加载状态
         function hideLoading() {
-            loadingEl.classList.add('hidden');
+            if (loadingEl) loadingEl.classList.add('hidden');
         }
         
         // 初始化页面
@@ -560,7 +553,9 @@
             fetchPrice();
             
             // 绑定刷新按钮
-            refreshBtn.addEventListener('click', fetchPrice);
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', fetchPrice);
+            }
         });
     </script>
 </body>
