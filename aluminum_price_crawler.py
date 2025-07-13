@@ -37,6 +37,7 @@ def crawl_aluminum_data():
             # 4. 提取日期
             date_tag = container.select_one("p:first-child span")
             date_str = date_tag.text.strip() if date_tag else datetime.now().strftime("%m-%d")
+            current_year = datetime.now().year
             
             # 5. 提取价格（关键修复） - 第三个<p>的第一个label
             price_tag = container.select_one("p:nth-child(3) label.fluctuat_number")
@@ -66,15 +67,15 @@ def crawl_aluminum_data():
             
             data_blocks.append({
                 "product": product,
-                "date": f"2025-{date_str}",
+                "date": f"{current_year}-{date_str}",
                 "price": price,
                 "unit": unit,
                 "change": change
             })
 
         # 确保输出目录存在
-        output_dir = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(output_dir, "aluminum_prices.json")
+        repo_root = os.environ.get('GITHUB_WORKSPACE', os.path.dirname(os.path.abspath(__file__)))
+        output_path = os.path.join(repo_root, "aluminum_prices.json")
         
         # 保存结果
         result = {
@@ -86,18 +87,23 @@ def crawl_aluminum_data():
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
         
-        print(f"成功提取{len(data_blocks)}条价格数据，保存至: {output_path}")
-        return True
+        # 写入验证
+        if os.path.exists(output_path):
+            print(f"成功提取{len(data_blocks)}条数据 | 保存路径: {output_path}")
+            return True
+        else:
+            raise Exception("文件写入失败")
         
     except Exception as e:
         print(f"爬取失败: {str(e)}")
-        # 保存原始HTML供调试
-        debug_path = os.path.join(os.path.dirname(__file__), "error.html")
-        with open(debug_path, "w", encoding="utf-8") as f:
-            f.write(response.text if 'response' in locals() else "无响应")
-        print(f"调试信息已保存至: {debug_path}")
+        # 保存错误日志
+        error_path = os.path.join(os.path.dirname(__file__), "error.log")
+        with open(error_path, "w") as f:
+            f.write(f"Error: {str(e)}\n")
+        return False
 
 if __name__ == "__main__":
+    print("开始铝价数据爬取...")
     if crawl_aluminum_data():
         print("数据更新成功")
     else:
