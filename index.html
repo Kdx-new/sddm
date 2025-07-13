@@ -173,10 +173,12 @@
         function updateChartData() {
             if (!trendChart) return;
             
-            // 按日期排序
-            const sortedData = [...historicalData].sort((a, b) => 
-                new Date(a.date) - new Date(b.date)
-            );
+            // 按日期排序（修复日期排序问题）
+            const sortedData = [...historicalData].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA - dateB;
+            });
             
             // 提取标签和数据点
             const labels = sortedData.map(item => {
