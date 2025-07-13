@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>A00铝实时价格</title>
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电解铝价格历史趋势</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #1a73e8;
@@ -12,13 +13,17 @@
             --danger: #ea4335;
             --text: #333;
             --bg: #f8f9fa;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
         }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
         }
+        
         body {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
@@ -27,14 +32,17 @@
             justify-content: center;
             align-items: center;
         }
+        
         .price-card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow);
             width: 90%;
             max-width: 500px;
             overflow: hidden;
+            backdrop-filter: blur(10px);
         }
+        
         .card-header {
             background: var(--primary);
             color: white;
@@ -42,15 +50,27 @@
             text-align: center;
             position: relative;
         }
+        
         .card-header h1 {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 600;
             letter-spacing: 1px;
         }
+        
+        .card-header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+        
         .price-section {
             padding: 30px 20px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+        
         .price-value {
             font-size: 48px;
             font-weight: 700;
@@ -59,20 +79,27 @@
             align-items: center;
             justify-content: center;
         }
+        
         .price-unit {
             font-size: 24px;
             margin-left: 8px;
             font-weight: 500;
         }
+        
         .price-time {
             color: #666;
             font-size: 14px;
             margin: 8px 0;
         }
+        
         .price-change {
             font-size: 16px;
             margin: 5px 0;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.05);
         }
+        
         .refresh-btn {
             background: var(--primary);
             color: white;
@@ -81,7 +108,7 @@
             padding: 12px 24px;
             font-size: 16px;
             font-weight: 500;
-            margin: 15px 0;
+            margin: 20px auto;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -89,33 +116,60 @@
             gap: 8px;
             width: 80%;
             max-width: 200px;
-            margin: 20px auto;
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(26, 115, 232, 0.25);
         }
+        
         .refresh-btn:hover {
             background: #1669d8;
             transform: translateY(-2px);
         }
+        
         .trend-chart {
             background: var(--bg);
             border-radius: 12px;
             padding: 15px;
             margin: 0 20px 30px;
         }
+        
         .chart-header {
             display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
+            align-items: center;
         }
+        
         .chart-title {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
         }
-        .chart-range {
-            color: var(--primary);
-            font-size: 14px;
+        
+        .chart-controls {
+            display: flex;
+            gap: 10px;
         }
+        
+        .chart-range-btn {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .chart-range-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
         .legend {
             display: flex;
             justify-content: center;
@@ -123,27 +177,19 @@
             margin-top: 10px;
             font-size: 14px;
         }
+        
         .legend-item {
             display: flex;
             align-items: center;
             gap: 5px;
         }
+        
         .legend-color {
             width: 12px;
             height: 12px;
             border-radius: 50%;
         }
-        .chart-container {
-            height: 180px;
-            position: relative;
-        }
-        .chart-placeholder {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #999;
-        }
+        
         .footer {
             text-align: center;
             padding: 15px;
@@ -151,6 +197,7 @@
             color: #777;
             border-top: 1px solid #eee;
         }
+        
         .loading {
             position: absolute;
             top: 0;
@@ -162,7 +209,9 @@
             justify-content: center;
             align-items: center;
             z-index: 10;
+            border-radius: 16px;
         }
+        
         .spinner {
             width: 40px;
             height: 40px;
@@ -171,31 +220,25 @@
             border-top-color: var(--primary);
             animation: spin 0.8s linear infinite;
         }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
         
-        /* 趋势动画 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn {
-            animation: fadeIn 0.5s ease forwards;
-        }
-        
-        /* 价格变动样式 */
         .price-up {
             color: var(--danger);
         }
+        
         .price-up::after {
             content: "▲";
             font-size: 20px;
             margin-left: 8px;
         }
+        
         .price-down {
             color: var(--success);
         }
+        
         .price-down::after {
             content: "▼";
             font-size: 20px;
@@ -220,7 +263,7 @@
 <body>
     <div class="price-card">
         <div class="card-header">
-            <h1>A00铝实时价格</h1>
+            <h1>电解铝价格历史趋势</h1>
         </div>
         
         <div class="price-section">
@@ -248,8 +291,7 @@
                 <div class="chart-placeholder" id="chart-placeholder">
                     <div>加载趋势图...</div>
                 </div>
-                <!-- 趋势图 -->
-                <canvas id="trend-chart" width="400" height="180"></canvas>
+                <canvas id="trend-chart"></canvas>
             </div>
             <div class="legend">
                 <div class="legend-item">
@@ -260,7 +302,7 @@
         </div>
         
         <div class="footer">
-            数据来源：长江有色金属网 (CCMN)
+            数据来源：长江有色金属网 (CCMN) 每日电解铝A00报价
         </div>
     </div>
 
@@ -281,78 +323,70 @@
         // 价格数据API
         const PRICE_API_URL = 'aluminum_prices.json';
         
-        // 存储历史数据
+        // 图表实例和配置
+        let trendChart = null;
         let historicalData = [];
         
-        // 图表初始配置
-        const chartConfig = {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: '铝锭价格',
-                    data: [],
-                    fill: false,
-                    borderColor: '#1a73e8',
-                    tension: 0.2,
-                    pointBackgroundColor: '#1a73e8',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        grid: {
-                            drawBorder: false
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return value.toLocaleString() + '元';
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return '价格: ' + context.parsed.y.toLocaleString() + '元/吨';
-                            }
-                        }
-                    }
-                },
-                elements: {
-                    point: {
-                        radius: 4,
-                        hoverRadius: 6
-                    }
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
-                }
-            }
-        };
-        
         // 初始化图表
-        let trendChart = null;
         function initChart() {
+            if (trendChart) {
+                trendChart.destroy(); // 销毁旧图表实例
+            }
+            
             const ctx = chartCanvas.getContext('2d');
-            trendChart = new Chart(ctx, chartConfig);
-            chartPlaceholder.classList.add('hidden');
+            
+            trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '铝锭价格',
+                        data: [],
+                        fill: false,
+                        borderColor: '#1a73e8',
+                        backgroundColor: 'rgba(26, 115, 232, 0.1)',
+                        tension: 0.3,
+                        pointBackgroundColor: '#1a73e8',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + '元';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toLocaleString() + '元/吨';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
         
         // 获取价格数据
@@ -369,27 +403,29 @@
                 
                 const data = await response.json();
                 
-                // 找到A00铝数据
+                // 找到铝相关数据
                 const aluminumData = data.data.find(item => 
-                    item.product === "A00铝"
+                    item.product.includes("铝") || item.product.includes("铝合金")
                 );
                 
                 if (!aluminumData) {
-                    throw new Error("未找到A00铝价格数据");
+                    throw new Error("未找到铝价数据");
                 }
                 
                 // 更新显示
                 updatePriceDisplay(aluminumData);
                 
-                // 添加到历史数据
-                addToHistoricalData(aluminumData);
+                // 保存所有历史数据
+                historicalData = data.data.filter(item => 
+                    item.product.includes("铝") || item.product.includes("铝合金")
+                );
                 
                 // 更新图表
                 updateChartData();
                 
             } catch (error) {
-                console.error('获取价格失败:', error);
-                displayError(error.message);
+                console.error('爬取失败:', error);
+                displayError(`数据加载失败: ${error.message}`);
             } finally {
                 hideLoading();
             }
@@ -399,7 +435,7 @@
         function updatePriceDisplay(data) {
             const price = data.price.toLocaleString('zh-CN');
             const change = data.change;
-            const updateDate = new Date(data.date + "T10:06:00Z");
+            const updateDate = new Date(data.timestamp);
             
             // 格式化时间：YYYY-MM-DD HH:MM
             const formattedTime = `${updateDate.getFullYear()}-${(updateDate.getMonth()+1).toString().padStart(2, '0')}-${updateDate.getDate().toString().padStart(2, '0')} ${updateDate.getHours().toString().padStart(2, '0')}:${updateDate.getMinutes().toString().padStart(2, '0')}`;
@@ -422,7 +458,7 @@
             }
             
             // 更新DOM内容
-            currentPriceEl.innerHTML = `<span class="loading-text">${price}</span><span class="price-unit">元/吨</span>`;
+            currentPriceEl.innerHTML = `<span>${price}</span><span class="price-unit">元/吨</span>`;
             updateTimeEl.textContent = formattedTime;
             
             // 更新涨跌值
@@ -444,38 +480,18 @@
             }, 500);
         }
         
-        // 添加数据到历史记录
-        function addToHistoricalData(data) {
-            // 检查是否已有今天的数据
-            const existingIndex = historicalData.findIndex(item => 
-                item.date === data.date
-            );
-            
-            if (existingIndex !== -1) {
-                // 更新现有数据
-                historicalData[existingIndex] = data;
-            } else {
-                // 添加新数据
-                historicalData.push(data);
-            }
-            
-            // 只保留最近7天的数据
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            historicalData = historicalData.filter(item => {
-                const itemDate = new Date(item.date);
-                return itemDate >= sevenDaysAgo;
-            });
-        }
-        
         // 更新图表数据
         function updateChartData() {
-            if (!trendChart) return;
+            if (!trendChart) {
+                initChart(); // 确保图表已初始化
+            }
             
             // 按日期排序
-            const sortedData = [...historicalData].sort((a, b) => 
-                new Date(a.date) - new Date(b.date)
-            );
+            const sortedData = [...historicalData].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA - dateB;
+            });
             
             // 提取标签和数据点
             const labels = sortedData.map(item => {
@@ -540,7 +556,5 @@
             refreshBtn.addEventListener('click', fetchPrice);
         });
     </script>
-    <!-- 引入Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
