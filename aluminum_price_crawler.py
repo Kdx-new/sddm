@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 def crawl_aluminum_data():
     url = "https://www.ccmn.cn/priceinfo/"
