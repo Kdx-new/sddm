@@ -21,8 +21,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run crawler
-        run: python aluminum_crawler.py  # 执行爬虫脚本
-
+        run: python aluminum_price_crawler.py  # 执行爬虫脚本
+        
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
