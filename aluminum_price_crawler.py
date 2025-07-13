@@ -1,8 +1,9 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import json
 import re
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 def crawl_aluminum_data():
     url = "https://www.ccmn.cn/priceinfo/"
@@ -70,26 +71,34 @@ def crawl_aluminum_data():
                 "unit": unit,
                 "change": change
             })
+
+        # 确保输出目录存在
+        output_dir = os.path.dirname(os.path.abspath(__file__))
+        output_path = os.path.join(output_dir, "aluminum_prices.json")
         
         # 保存结果
         result = {
             "source": url,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": data_blocks
         }
         
-        with open("aluminum_prices.json", "w", encoding="utf-8") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
         
-        print(f"成功提取{len(data_blocks)}条价格数据")
+        print(f"成功提取{len(data_blocks)}条价格数据，保存至: {output_path}")
         return True
         
     except Exception as e:
         print(f"爬取失败: {str(e)}")
         # 保存原始HTML供调试
-        with open("error.html", "w", encoding="utf-8") as f:
+        debug_path = os.path.join(os.path.dirname(__file__), "error.html")
+        with open(debug_path, "w", encoding="utf-8") as f:
             f.write(response.text if 'response' in locals() else "无响应")
-        return False
+        print(f"调试信息已保存至: {debug_path}")
 
 if __name__ == "__main__":
-    crawl_aluminum_data()
+    if crawl_aluminum_data():
+        print("数据更新成功")
+    else:
+        print("数据更新失败，请检查错误日志")
