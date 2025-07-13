@@ -1,13 +1,111 @@
 {
   "source": "https://www.ccmn.cn/priceinfo/",
-  "timestamp": "2025-07-13T02:01:15.804720+00:00",
+  "timestamp": "2025-07-13T02:10:11.277657+00:00",
   "data": [
+    {
+      "product": "1#铜",
+      "date": "2025-07-11",
+      "price": 78810.0,
+      "unit": "元/吨",
+      "change": 0
+    },
     {
       "product": "A00铝",
       "date": "2025-07-11",
       "price": 20790.0,
       "unit": "元/吨",
-      "change": -30
+      "change": 0
+    },
+    {
+      "product": "0#锌",
+      "date": "2025-07-11",
+      "price": 22450.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#锌",
+      "date": "2025-07-11",
+      "price": 22350.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#铅",
+      "date": "2025-07-11",
+      "price": 17100.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#锡",
+      "date": "2025-07-11",
+      "price": 266750.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#镍",
+      "date": "2025-07-11",
+      "price": 122600.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#白银",
+      "date": "2025-07-11",
+      "price": 9025.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "钯金",
+      "date": "2025-07-11",
+      "price": 290.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#钴",
+      "date": "2025-07-11",
+      "price": 248000.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#锑",
+      "date": "2025-07-11",
+      "price": 186000.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "2#锑",
+      "date": "2025-07-11",
+      "price": 181000.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#镁",
+      "date": "2025-07-11",
+      "price": 17800.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#电解锰",
+      "date": "2025-07-11",
+      "price": 15000.0,
+      "unit": "元/吨",
+      "change": 0
+    },
+    {
+      "product": "1#电解锰(99.7%袋装)",
+      "date": "2025-07-11",
+      "price": 14000.0,
+      "unit": "元/吨",
+      "change": 0
     }
   ]
 }
