@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 def crawl_aluminum_data():
     url = "https://www.ccmn.cn/priceinfo/"
@@ -24,20 +24,21 @@ def crawl_aluminum_data():
         containers = soup.select("div.fluctuat_content")
         
         for container in containers:
-            # 3. 提取产品名称（精确匹配铝产品）
+            # 3. 提取产品名称（精确匹配A00铝）
             product_tag = container.select_one("p:first-child a")
             if not product_tag:
                 continue
                 
             product = product_tag.text.strip()
-            # 过滤非铝产品（A00铝、铝合金等）
-            if "铝" not in product and "铝合金" not in product:
+            # 只保留A00铝数据
+            if "A00铝" not in product and "1#铝" not in product:
                 continue
                 
             # 4. 提取日期
             date_tag = container.select_one("p:first-child span")
             date_str = date_tag.text.strip() if date_tag else datetime.now().strftime("%m-%d")
             current_year = datetime.now().year
+            full_date = f"{current_year}-{date_str}"
             
             # 5. 提取价格（关键修复） - 第三个<p>的第一个label
             price_tag = container.select_one("p:nth-child(3) label.fluctuat_number")
@@ -66,8 +67,8 @@ def crawl_aluminum_data():
                     pass
             
             data_blocks.append({
-                "product": product,
-                "date": f"{current_year}-{date_str}",
+                "product": "A00铝",  # 统一产品名称
+                "date": full_date,
                 "price": price,
                 "unit": unit,
                 "change": change
@@ -77,11 +78,31 @@ def crawl_aluminum_data():
         repo_root = os.environ.get('GITHUB_WORKSPACE', os.path.dirname(os.path.abspath(__file__)))
         output_path = os.path.join(repo_root, "aluminum_prices.json")
         
+        # 历史数据处理逻辑
+        historical_data = []
+        if os.path.exists(output_path):
+            with open(output_path, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+                historical_data = existing_data.get("data", [])
+        
+        # 合并新旧数据，保留最近7天
+        today = datetime.now().strftime("%Y-%m-%d")
+        updated_data = [
+            item for item in historical_data 
+            if item["date"] != today  # 移除今天的历史数据
+        ]
+        updated_data.extend(data_blocks)  # 添加今天的爬取数据
+        
+        # 按日期排序并保留最近7天
+        updated_data.sort(key=lambda x: x["date"])
+        seven_days_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        updated_data = [item for item in updated_data if item["date"] >= seven_days_ago]
+        
         # 保存结果
         result = {
             "source": url,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data": data_blocks
+            "data": updated_data
         }
         
         with open(output_path, "w", encoding="utf-8") as f:
@@ -98,8 +119,8 @@ def crawl_aluminum_data():
         print(f"爬取失败: {str(e)}")
         # 保存错误日志
         error_path = os.path.join(os.path.dirname(__file__), "error.log")
-        with open(error_path, "w") as f:
-            f.write(f"Error: {str(e)}\n")
+        with open(error_path, "a") as f:
+            f.write(f"{datetime.now()}: Error - {str(e)}\n")
         return False
 
 if __name__ == "__main__":
