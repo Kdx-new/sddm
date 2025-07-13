@@ -32,14 +32,3 @@ jobs:
           github_token: ${{ secrets.GH_PAGES_DEPLOY }}
           publish_dir: ./  # 部署所有文件（含index.html和JSON）
           publish_branch: gh-pages
-
-        - name: Debug - Check file existence
-          run: |
-                echo "当前工作目录: $(pwd)"
-                ls -la  # 列出所有文件
-                if [ -f aluminum_prices.json ]; then
-                  echo "JSON文件存在，内容如下:"
-                  cat aluminum_prices.json
-                else
-                  echo "错误：JSON文件未生成！"
-                fi
