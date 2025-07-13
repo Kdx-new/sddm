@@ -37,7 +37,7 @@ jobs:
 
       # 4. 运行爬虫脚本
       - name: Run Crawler
-        run: python crawler.py
+        run: python aluminum_price_crawler.py
 
       # 5. 文件验证（调试关键）
       - name: Verify JSON File
