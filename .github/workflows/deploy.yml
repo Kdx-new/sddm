@@ -8,13 +8,6 @@ jobs:
   crawl-and-update:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          # 关键修改：使用自定义Token替代默认GITHUB_TOKEN
-          github_token: ${{ secrets.GH_PAGES_TOKEN }}  # 指向新创建的Secret
-          publish_dir: ./    # 发布根目录下的文件
-          publish_branch: gh-pages  # 目标分支
     
       # 1. 检出代码（使用PAT确保写入权限）
       - name: Checkout Repository
@@ -69,3 +62,12 @@ jobs:
         run: |
           sudo rm -rf /usr/local/lib/python*
           sudo rm -rf ~/.cache/pip
+
+      # 8. 部署到GitHub Pages（放在最后）
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          # 关键修改：使用自定义Token替代默认GITHUB_TOKEN
+          github_token: ${{ secrets.GH_PAGES_TOKEN }}  # 指向新创建的Secret
+          publish_dir: ./    # 发布根目录下的文件
+          publish_branch: gh-pages  # 目标分支
