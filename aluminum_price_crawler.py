@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
-import os
 from datetime import datetime, UTC
 
 def crawl_aluminum_data():
@@ -78,25 +77,12 @@ def crawl_aluminum_data():
             "timestamp": datetime.now(UTC).isoformat(),
             "data": data_blocks
         }
-
-        # 获取仓库绝对路径（GitHub Actions 专用环境变量）
-        repo_root = os.environ.get('GITHUB_WORKSPACE', os.getcwd())
-        output_path = os.path.join(repo_root, "aluminum_prices.json")
         
-        with open(output_path, "w") as f:
-            json.dump(data, f)
+        with open("aluminum_prices.json", "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
         
         print(f"成功提取{len(data_blocks)}条价格数据")
         return True
-
-    # 写入后立即验证
-        if os.path.exists(output_path):
-            print(f"✅ 文件已写入: {output_path}")
-            with open(output_path, "r") as f:
-                data = json.load(f)
-                print(f"数据条目数: {len(data['data'])}")  # 与实际提取数对比
-        else:
-            raise Exception("❌ 文件写入失败")
         
     except Exception as e:
         print(f"爬取失败: {str(e)}")
