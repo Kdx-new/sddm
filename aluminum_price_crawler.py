@@ -30,8 +30,7 @@ def crawl_aluminum_data():
                 continue
                 
             product = product_tag.text.strip()
-            # 只保留A00铝数据
-            if "A00铝" not in product and "1#铝" not in product:
+            if "A00铝" not in product and "电解铝" not in product:
                 continue
                 
             # 4. 提取日期
@@ -40,26 +39,24 @@ def crawl_aluminum_data():
             current_year = datetime.now().year
             full_date = f"{current_year}-{date_str}"
             
-            # 5. 提取价格（关键修复） - 第三个<p>的第一个label
+            # 5. 提取价格
             price_tag = container.select_one("p:nth-child(3) label.fluctuat_number")
             price = 0.0
             if price_tag:
-                # 清洗价格数据（移除逗号和非数字字符）
                 price_text = re.sub(r"[^\d.]", "", price_tag.text)
                 try:
                     price = float(price_text) if price_text else 0.0
                 except ValueError:
                     pass
             
-            # 6. 提取单位 - 价格标签后的第一个label
+            # 6. 提取单位
             unit_tag = price_tag.find_next_sibling("label") if price_tag else None
             unit = unit_tag.text.strip("()") if unit_tag else "元/吨"
             
-            # 7. 提取涨跌值（关键修复） - 第二个<p>的第二个label
+            # 7. 提取涨跌值
             change_tag = container.select_one("p:nth-child(2) label:nth-child(2)")
             change = 0
             if change_tag:
-                # 清洗涨跌值（移除空格等非数字字符）
                 change_text = re.sub(r"[^\d\-+]", "", change_tag.text)
                 try:
                     change = int(change_text) if change_text else 0
@@ -78,23 +75,35 @@ def crawl_aluminum_data():
         repo_root = os.environ.get('GITHUB_WORKSPACE', os.path.dirname(os.path.abspath(__file__)))
         output_path = os.path.join(repo_root, "aluminum_prices.json")
         
-        # 历史数据处理逻辑
-        historical_data = []
+        # 历史数据处理逻辑 - 关键修复
+        existing_data = {"data": []}
         if os.path.exists(output_path):
             with open(output_path, "r", encoding="utf-8") as f:
-                existing_data = json.load(f)
-                historical_data = existing_data.get("data", [])
+                try:
+                    existing_data = json.load(f)
+                except json.JSONDecodeError:
+                    pass
         
-        # 合并新旧数据，保留最近7天
-        today = datetime.now().strftime("%Y-%m-%d")
-        updated_data = [
-            item for item in historical_data 
-            if item["date"] != today  # 移除今天的历史数据
-        ]
-        updated_data.extend(data_blocks)  # 添加今天的爬取数据
+        # 创建日期索引字典 - 确保每天只有一条最新数据
+        date_index = {}
+        for idx, item in enumerate(existing_data.get("data", [])):
+            date_index[item["date"]] = idx
         
-        # 按日期排序并保留最近7天
-        updated_data.sort(key=lambda x: x["date"])
+        # 合并数据 - 关键修复
+        updated_data = existing_data.get("data", [])
+        
+        for new_item in data_blocks:
+            # 如果已有同一天数据，则替换而非追加
+            if new_item["date"] in date_index:
+                updated_data[date_index[new_item["date"]]] = new_item
+            else:
+                updated_data.append(new_item)
+                date_index[new_item["date"]] = len(updated_data) - 1
+        
+        # 按日期排序 - 确保数据顺序正确
+        updated_data.sort(key=lambda x: datetime.strptime(x["date"], "%Y-%m-%d"))
+        
+        # 只保留最近7天的数据
         seven_days_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         updated_data = [item for item in updated_data if item["date"] >= seven_days_ago]
         
