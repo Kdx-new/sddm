@@ -1,9 +1,9 @@
-import os
 import requests
 from bs4 import BeautifulSoup
 import json
 import re
-from datetime import datetime, timezone
+import os
+from datetime import datetime, UTC
 
 def crawl_aluminum_data():
     url = "https://www.ccmn.cn/priceinfo/"
@@ -15,104 +15,95 @@ def crawl_aluminum_data():
     
     try:
         # 1. 获取页面内容
-        response = requests.get(url, headers=headers, timeout=25)
+        response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'lxml')
         
-        # 2. 定位所有产品容器 - 更稳健的选择器
+        # 2. 定位所有产品容器
         data_blocks = []
         containers = soup.select("div.fluctuat_content")
         
-        if not containers:
-            print("警告：未找到价格容器，网站结构可能已变更")
-            # 保存原始HTML供调试
-            with open("debug_page.html", "w", encoding="utf-8") as f:
-                f.write(response.text)
-        
         for container in containers:
-            try:
-                # 3. 产品名称（更宽松的匹配）
-                product_tag = container.select_one("p a")
-                if not product_tag:
-                    continue
-                    
-                product = product_tag.text.strip()
-                
-                # 4. 日期处理
-                date_tag = container.select_one("p span")
-                date_str = date_tag.text.strip() if date_tag else datetime.now().strftime("%m-%d")
-                current_year = datetime.now().year
-                
-                # 5. 价格提取（更健壮的解析）
-                price_tag = container.select_one("label.fluctuat_number")
-                price = 0.0
-                if price_tag:
-                    price_text = re.search(r"[\d,]+\.?\d*", price_tag.text)
-                    if price_text:
-                        try:
-                            price = float(price_text.group().replace(",", ""))
-                        except ValueError:
-                            pass
-                
-                # 6. 单位提取
-                unit = "元/吨"  # 默认值
-                unit_tags = container.select("label")
-                if len(unit_tags) > 1:
-                    unit_text = unit_tags[1].text.strip()
-                    if unit_text and "元" in unit_text:
-                        unit = unit_text.strip("()")
-                
-                # 7. 涨跌值（更健壮的解析）
-                change = 0
-                change_tag = container.select_one("label.fluctuat_range")
-                if change_tag:
-                    change_text = re.search(r"[-+]?\d+", change_tag.text)
-                    if change_text:
-                        try:
-                            change = int(change_text.group())
-                        except ValueError:
-                            pass
-                
-                data_blocks.append({
-                    "product": product,
-                    "date": f"{current_year}-{date_str}",
-                    "price": price,
-                    "unit": unit,
-                    "change": change
-                })
-                
-            except Exception as e:
-                print(f"处理容器时出错: {str(e)}")
+            # 3. 提取产品名称（精确匹配铝产品）
+            product_tag = container.select_one("p:first-child a")
+            if not product_tag:
                 continue
+                
+            product = product_tag.text.strip()
+            # 过滤非铝产品（A00铝、铝合金等）
+            if "铝" not in product and "铝合金" not in product:
+                continue
+                
+            # 4. 提取日期
+            date_tag = container.select_one("p:first-child span")
+            date_str = date_tag.text.strip() if date_tag else datetime.now().strftime("%m-%d")
+            
+            # 5. 提取价格（关键修复） - 第三个<p>的第一个label
+            price_tag = container.select_one("p:nth-child(3) label.fluctuat_number")
+            price = 0.0
+            if price_tag:
+                # 清洗价格数据（移除逗号和非数字字符）
+                price_text = re.sub(r"[^\d.]", "", price_tag.text)
+                try:
+                    price = float(price_text) if price_text else 0.0
+                except ValueError:
+                    pass
+            
+            # 6. 提取单位 - 价格标签后的第一个label
+            unit_tag = price_tag.find_next_sibling("label") if price_tag else None
+            unit = unit_tag.text.strip("()") if unit_tag else "元/吨"
+            
+            # 7. 提取涨跌值（关键修复） - 第二个<p>的第二个label
+            change_tag = container.select_one("p:nth-child(2) label:nth-child(2)")
+            change = 0
+            if change_tag:
+                # 清洗涨跌值（移除空格等非数字字符）
+                change_text = re.sub(r"[^\d\-+]", "", change_tag.text)
+                try:
+                    change = int(change_text) if change_text else 0
+                except ValueError:
+                    pass
+            
+            data_blocks.append({
+                "product": product,
+                "date": f"2025-{date_str}",
+                "price": price,
+                "unit": unit,
+                "change": change
+            })
         
-        # 8. 确保输出目录存在
-        output_dir = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(output_dir, "aluminum_prices.json")
-        
-        # 9. 保存结果（使用绝对路径）
+        # 保存结果
         result = {
             "source": url,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": data_blocks
         }
+
+        # 获取仓库绝对路径（GitHub Actions 专用环境变量）
+        repo_root = os.environ.get('GITHUB_WORKSPACE', os.getcwd())
+        output_path = os.path.join(repo_root, "aluminum_prices.json")
         
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
+        with open(output_path, "w") as f:
+            json.dump(data, f)
         
-        print(f"成功提取{len(data_blocks)}条价格数据，保存至: {output_path}")
+        print(f"成功提取{len(data_blocks)}条价格数据")
         return True
+
+    # 写入后立即验证
+        if os.path.exists(output_path):
+            print(f"✅ 文件已写入: {output_path}")
+            with open(output_path, "r") as f:
+                data = json.load(f)
+                print(f"数据条目数: {len(data['data'])}")  # 与实际提取数对比
+        else:
+            raise Exception("❌ 文件写入失败")
         
     except Exception as e:
         print(f"爬取失败: {str(e)}")
         # 保存原始HTML供调试
-        debug_path = os.path.join(os.path.dirname(__file__), "error.html")
-        with open(debug_path, "w", encoding="utf-8") as f:
+        with open("error.html", "w", encoding="utf-8") as f:
             f.write(response.text if 'response' in locals() else "无响应")
-        print(f"调试信息已保存至: {debug_path}")
         return False
 
 if __name__ == "__main__":
-    if crawl_aluminum_data():
-        print("数据更新成功")
-    else:
-        print("数据更新失败，请检查错误日志")
+    crawl_aluminum_data()
