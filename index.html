@@ -260,7 +260,7 @@
         </div>
         
         <div class="footer">
-            数据来源：长江有色金属网 (CCMN) 每日A00铝报价
+            数据来源：长江有色金属网 (CCMN)
         </div>
     </div>
 
@@ -288,10 +288,10 @@
         const chartConfig = {
             type: 'line',
             data: {
-                labels: [],
+                labels: ['7月7日', '7月8日', '7月9日', '7月10日', '7月11日', '7月12日', '今日'],
                 datasets: [{
                     label: '铝锭价格',
-                    data: [],
+                    data: [20640, 20600, 20670, 20820, 20790, 20790, null],
                     fill: false,
                     borderColor: '#1a73e8',
                     tension: 0.2,
