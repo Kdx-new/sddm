@@ -1,8 +1,8 @@
 name: Deploy Aluminum Data
 on:
+  workflow_dispatch:    # 支持手动触发
   schedule:
     - cron: '5 2 * * *'  # 每天UTC 02:05（北京时间次日10:05）运行[9](@ref)
-    workflow_dispatch:    # 支持手动触发
   push:
     branches: [main]
 
