@@ -329,10 +329,6 @@
         
         // 初始化图表
         function initChart() {
-            if (trendChart) {
-                trendChart.destroy(); // 销毁旧图表实例
-            }
-            
             const ctx = chartCanvas.getContext('2d');
             
             trendChart = new Chart(ctx, {
@@ -403,7 +399,7 @@
                 
                 const data = await response.json();
                 
-                // 找到铝相关数据
+                // 找到铝数据
                 const aluminumData = data.data.find(item => 
                     item.product.includes("铝") || item.product.includes("铝合金")
                 );
@@ -415,7 +411,7 @@
                 // 更新显示
                 updatePriceDisplay(aluminumData);
                 
-                // 保存所有历史数据
+                // 获取所有历史数据
                 historicalData = data.data.filter(item => 
                     item.product.includes("铝") || item.product.includes("铝合金")
                 );
@@ -424,8 +420,8 @@
                 updateChartData();
                 
             } catch (error) {
-                console.error('爬取失败:', error);
-                displayError(`数据加载失败: ${error.message}`);
+                console.error('获取价格失败:', error);
+                displayError(error.message);
             } finally {
                 hideLoading();
             }
@@ -435,26 +431,35 @@
         function updatePriceDisplay(data) {
             const price = data.price.toLocaleString('zh-CN');
             const change = data.change;
-            const updateDate = new Date(data.timestamp);
             
-            // 格式化时间：YYYY-MM-DD HH:MM
-            const formattedTime = `${updateDate.getFullYear()}-${(updateDate.getMonth()+1).toString().padStart(2, '0')}-${updateDate.getDate().toString().padStart(2, '0')} ${updateDate.getHours().toString().padStart(2, '0')}:${updateDate.getMinutes().toString().padStart(2, '0')}`;
-            
-            // 价格趋势动画
-            if (currentPriceEl.textContent !== "--") {
-                const prevPriceText = currentPriceEl.querySelector('span').textContent.replace(/,/g, '');
-                const prevPrice = parseFloat(prevPriceText);
-                const currentPrice = data.price;
-                
-                if (!isNaN(prevPrice) && !isNaN(currentPrice)) {
-                    if (currentPrice > prevPrice) {
-                        currentPriceEl.classList.add('price-up');
-                        currentPriceEl.classList.remove('price-down');
-                    } else if (currentPrice < prevPrice) {
-                        currentPriceEl.classList.add('price-down');
-                        currentPriceEl.classList.remove('price-up');
+            // 修复日期显示问题
+            let formattedTime = "未知时间";
+            try {
+                // 尝试解析ISO格式时间
+                if (data.timestamp) {
+                    const updateDate = new Date(data.timestamp);
+                    formattedTime = `${updateDate.getFullYear()}-${(updateDate.getMonth()+1).toString().padStart(2, '0')}-${updateDate.getDate().toString().padStart(2, '0')} ${updateDate.getHours().toString().padStart(2, '0')}:${updateDate.getMinutes().toString().padStart(2, '0')}`;
+                } 
+                // 尝试解析日期字段
+                else if (data.date) {
+                    // 处理"2023-07-15"格式
+                    if (data.date.includes("-")) {
+                        const dateParts = data.date.split("-");
+                        if (dateParts.length === 3) {
+                            formattedTime = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`;
+                        }
+                    }
+                    // 处理"07-15"格式
+                    else if (data.date.includes("-")) {
+                        const currentYear = new Date().getFullYear();
+                        const dateParts = data.date.split("-");
+                        if (dateParts.length === 2) {
+                            formattedTime = `${currentYear}-${dateParts[0]}-${dateParts[1]}`;
+                        }
                     }
                 }
+            } catch (e) {
+                console.error("日期解析错误:", e);
             }
             
             // 更新DOM内容
@@ -465,41 +470,43 @@
             let changeSign = '';
             if (change > 0) {
                 changeSign = '+';
-                changeValueEl.style.color = 'var(--danger)';
+                changeValueEl.style.color = '#ea4335';
             } else if (change < 0) {
-                changeValueEl.style.color = 'var(--success)';
+                changeValueEl.style.color = '#34a853';
             } else {
                 changeValueEl.style.color = '#666';
             }
             changeValueEl.textContent = `${changeSign}${change}元`;
-            
-            // 添加动画效果
-            currentPriceEl.classList.add('animate-fadeIn');
-            setTimeout(() => {
-                currentPriceEl.classList.remove('animate-fadeIn');
-            }, 500);
         }
         
         // 更新图表数据
         function updateChartData() {
-            if (!trendChart) {
-                initChart(); // 确保图表已初始化
-            }
+            if (!trendChart) return;
             
             // 按日期排序
             const sortedData = [...historicalData].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return dateA - dateB;
+                try {
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+                    return dateA - dateB;
+                } catch (e) {
+                    return 0;
+                }
             });
             
             // 提取标签和数据点
-            const labels = sortedData.map(item => {
-                const date = new Date(item.date);
-                return `${date.getMonth()+1}月${date.getDate()}日`;
-            });
+            const labels = [];
+            const dataPoints = [];
             
-            const dataPoints = sortedData.map(item => item.price);
+            for (const item of sortedData) {
+                try {
+                    const date = new Date(item.date);
+                    labels.push(`${date.getMonth()+1}月${date.getDate()}日`);
+                    dataPoints.push(item.price);
+                } catch (e) {
+                    console.error("日期处理错误:", e);
+                }
+            }
             
             // 更新图表
             trendChart.data.labels = labels;
