@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 def crawl_aluminum_data():
     url = "https://www.ccmn.cn/priceinfo/"
@@ -35,7 +35,7 @@ def crawl_aluminum_data():
                 
             # 4. 提取日期
             date_tag = container.select_one("p:first-child span")
-            date_str = date_tag.text.strip() if date_tag else datetime.now(timezone.utc).strftime("%m-%d")
+            date_str = date_tag.text.strip() if date_tag else datetime.now().strftime("%m-%d")
             
             # 5. 提取价格（关键修复） - 第三个<p>的第一个label
             price_tag = container.select_one("p:nth-child(3) label.fluctuat_number")
