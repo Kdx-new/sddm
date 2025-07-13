@@ -20,6 +20,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Grant write permission
+        run: chmod +x aluminum_price_crawler.py
+  
       - name: Run crawler
         run: python aluminum_price_crawler.py  # 执行爬虫脚本
         
