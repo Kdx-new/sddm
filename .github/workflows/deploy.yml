@@ -1,5 +1,7 @@
 name: Aluminum Price Crawler
 on:
+  repository_dispatch:
+  types: [schedule-run]
   schedule:
     - cron: '5,15,25,35,45,55 2-10 * * *'  # 每天UTC 0:10（北京时间8:10）
   workflow_dispatch:  # 允许手动触发
