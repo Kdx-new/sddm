@@ -8,6 +8,11 @@ jobs:
   crawl-and-update:
     runs-on: ubuntu-latest
     steps:
+      - name: Print current time and environment
+        run: |
+          echo "Current UTC time: $(date -u)"
+          echo "Environment variables:"
+          env
     
       # 1. 检出代码（使用PAT确保写入权限）
       - name: Checkout Repository
