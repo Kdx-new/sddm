@@ -556,6 +556,55 @@
         function hideLoading() {
             loadingEl.classList.add('hidden');
         }
+
+	// 配置每日刷新时间点（北京时间）
+	const REFRESH_TIMES = ["11:58", "11:59"]; // 恢复为实际需要的刷新时间
+	
+	function calculateNextRefresh() {
+	  const now = new Date();
+	  // 使用UTC时间计算更可靠
+	  const nowHours = now.getUTCHours();
+	  const nowMinutes = now.getUTCMinutes();
+	  const nowSeconds = now.getUTCSeconds();
+	  const nowTotalSeconds = nowHours * 3600 + nowMinutes * 60 + nowSeconds;
+	  
+	  let minDiff = Infinity;
+	  let nextTime = null;
+	
+	  REFRESH_TIMES.forEach(timeStr => {
+	    const [hour, minute] = timeStr.split(':').map(Number);
+	    // 计算目标时间的总秒数（北京时间 = UTC+8）
+	    const targetTotalSeconds = (hour - 8) * 3600 + minute * 60;
+	    
+	    // 计算时间差（秒）
+	    let diffSeconds = targetTotalSeconds - nowTotalSeconds;
+	    
+	    // 如果目标时间已过，顺延到第二天
+	    if (diffSeconds < 0) diffSeconds += 24 * 3600;
+	    
+	    if (diffSeconds < minDiff) {
+	      minDiff = diffSeconds;
+	      nextTime = new Date(now.getTime() + diffSeconds * 1000);
+	    }
+	  });
+	  return { nextTime, msUntilRefresh: minDiff * 1000 };
+	}
+	
+	let refreshTimer = null; // 全局存储定时器
+	
+	function scheduleRefresh() {
+	  if (refreshTimer) clearTimeout(refreshTimer); // 清除现有定时器
+	  
+	  const { nextTime, msUntilRefresh } = calculateNextRefresh();
+	  
+	  // 调试日志：显示下次刷新时间
+	  console.log(`下次刷新时间: ${nextTime.toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})} (${Math.round(msUntilRefresh/1000)}秒后)`);
+	  
+	  refreshTimer = setTimeout(() => {
+	    console.log('执行整页刷新...');
+	    location.reload(true); // 强制整页刷新（绕过缓存）
+	  }, msUntilRefresh);
+	}	    
         
         // 初始化页面
         document.addEventListener('DOMContentLoaded', function() {
@@ -569,39 +618,20 @@
             refreshBtn.addEventListener('click', fetchPrice);
         });
 	
-	// 配置每日刷新时间点（北京时间）
-	const REFRESH_TIMES = ["11:49", "11:50"];
-	
-	function calculateNextRefresh() {
-	  const now = new Date();
-	  const nowBJ = new Date(now.getTime() + 8 * 3600000); // 转为UTC+8时间
-	  let nextTime = null;
-	  let minDiff = Infinity;
-	
-	  REFRESH_TIMES.forEach(timeStr => {
-	    const [hour, minute] = timeStr.split(':').map(Number);
-	    const targetTime = new Date(nowBJ);
-	    targetTime.setHours(hour, minute, 0, 0);
-	    if (targetTime < nowBJ) targetTime.setDate(targetTime.getDate() + 1); // 若已过时，顺延至次日
-	    const diff = targetTime - nowBJ;
-	    if (diff < minDiff) {
-	      minDiff = diff;
-	      nextTime = targetTime;
+	  // 初始化定时刷新
+	  scheduleRefresh();
+	  
+	  // 页面可见性变化处理
+	  document.addEventListener('visibilitychange', () => {
+	    if (document.hidden) {
+	      console.log('页面隐藏，暂停刷新');
+	      if (refreshTimer) clearTimeout(refreshTimer);
+	    } else {
+	      console.log('页面恢复，重新调度刷新');
+	      scheduleRefresh();
 	    }
 	  });
-	  return { nextTime, msUntilRefresh: minDiff };
-	}
-	
-	function scheduleRefresh() {
-	  const { nextTime, msUntilRefresh } = calculateNextRefresh();
-	  console.log(`下次刷新时间: ${nextTime.toLocaleString('zh-CN')}`);
-	  setTimeout(() => {
-	    location.reload(true); // 强制整页刷新（绕过缓存）
-	  }, msUntilRefresh);
-	}
-	
-	// 初始化
-	scheduleRefresh();
+	});
     </script>
 </body>
 </html>
