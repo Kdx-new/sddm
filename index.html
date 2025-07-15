@@ -568,6 +568,41 @@
             // 绑定刷新按钮
             refreshBtn.addEventListener('click', fetchPrice);
         });
+	<script>
+	// 配置每日刷新时间点（北京时间）
+	const REFRESH_TIMES = ["11:45", "11:46"];
+	
+	function calculateNextRefresh() {
+	  const now = new Date();
+	  const nowBJ = new Date(now.getTime() + 8 * 3600000); // 转为UTC+8时间
+	  let nextTime = null;
+	  let minDiff = Infinity;
+	
+	  REFRESH_TIMES.forEach(timeStr => {
+	    const [hour, minute] = timeStr.split(':').map(Number);
+	    const targetTime = new Date(nowBJ);
+	    targetTime.setHours(hour, minute, 0, 0);
+	    if (targetTime < nowBJ) targetTime.setDate(targetTime.getDate() + 1); // 若已过时，顺延至次日
+	    const diff = targetTime - nowBJ;
+	    if (diff < minDiff) {
+	      minDiff = diff;
+	      nextTime = targetTime;
+	    }
+	  });
+	  return { nextTime, msUntilRefresh: minDiff };
+	}
+	
+	function scheduleRefresh() {
+	  const { nextTime, msUntilRefresh } = calculateNextRefresh();
+	  console.log(`下次刷新时间: ${nextTime.toLocaleString('zh-CN')}`);
+	  setTimeout(() => {
+	    location.reload(true); // 强制整页刷新（绕过缓存）
+	  }, msUntilRefresh);
+	}
+	
+	// 初始化
+	scheduleRefresh();
+</script>
     </script>
 </body>
 </html>
