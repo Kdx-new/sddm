@@ -1,6 +1,6 @@
 {
   "source": "https://www.ccmn.cn/priceinfo/",
-  "timestamp": "2026-05-08T02:35:23.197135+00:00",
+  "timestamp": "2026-05-09T02:26:27.146222+00:00",
   "data": [
     {
       "product": "A00铝",
@@ -15,6 +15,13 @@
       "price": 24050.0,
       "unit": "元/吨",
       "change": -480
+    },
+    {
+      "product": "A00铝",
+      "date": "2026-05-08",
+      "price": 24220.0,
+      "unit": "元/吨",
+      "change": 170
     },
     {
       "product": "A00铝",
