@@ -1,0 +1,1 @@
+2026-08-03 02:35:36.189925: Error - HTTPSConnectionPool(host='www.ccmn.cn', port=443): Max retries exceeded with url: /priceinfo/ (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.ccmn.cn', port=443) at 0x7f177751ed90>, 'Connection to www.ccmn.cn timed out. (connect timeout=15)'))
